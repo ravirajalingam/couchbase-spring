@@ -1,9 +1,6 @@
 package test;
 
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.LinkedList;
@@ -21,16 +18,15 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.log4j.Logger;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.ResponseEntity.BodyBuilder;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.couchbase.client.core.metrics.DefaultLatencyMetricsCollectorConfig;
+import com.couchbase.client.core.time.Delay;
 import com.couchbase.client.deps.com.fasterxml.jackson.core.JsonParseException;
 import com.couchbase.client.deps.com.fasterxml.jackson.core.JsonProcessingException;
 import com.couchbase.client.deps.com.fasterxml.jackson.databind.JsonMappingException;
@@ -40,10 +36,11 @@ import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.CouchbaseCluster;
 import com.couchbase.client.java.document.JsonDocument;
 import com.couchbase.client.java.document.json.JsonObject;
+import com.couchbase.client.java.env.CouchbaseEnvironment;
+import com.couchbase.client.java.env.DefaultCouchbaseEnvironment;
 
-//import ch.qos.logback.classic.Level;
-//import ch.qos.logback.classic.Logger;
-
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 
 @RestController
 @RequestMapping(value ="/v1/consumer")
@@ -58,8 +55,10 @@ public class TestResource {
 
 	ObjectMapper mapper = new ObjectMapper();
 	
-	final Logger logger  = Logger.getLogger("com.couchbase.client");
+	// final Logger logger  = Logger.getLogger("com.couchbase.client");
 		
+	final Logger logger  = Logger.getLogger("com.couchbase.client");
+	
 	LimitedStringQueue logs = new LimitedStringQueue(1000);
 
 	TestConfig original = new TestConfig();
@@ -85,8 +84,7 @@ public class TestResource {
 	};
 
 	 @RequestMapping(value = "/test/path" ,method=RequestMethod.POST , produces="text/html")
-	 @ResponseBody
-	 public  BodyBuilder testPost(@RequestParam(value="reset" ,defaultValue="false") boolean reset, @RequestParam(value="halt",defaultValue="false") boolean halt, @RequestParam(value="restart",defaultValue="false") boolean restart, @RequestParam(value="config") String config) throws JsonParseException, JsonMappingException, IOException, InterruptedException, URISyntaxException {	
+	 public String testPost(@RequestParam(value="reset" ,defaultValue="false") boolean reset, @RequestParam(value="halt",defaultValue="false") boolean halt, @RequestParam(value="restart",defaultValue="false") boolean restart, @RequestParam(value="config") String config) throws JsonParseException, JsonMappingException, IOException, InterruptedException, URISyntaxException {	
 	 
 	 
 		 if (running.get() && (halt || reset || restart)) {
@@ -136,9 +134,10 @@ public class TestResource {
 				}
 			}
 		}
-		return ResponseEntity.created(new URI(request.getRequestURI().toString()));
+		return "redirect:"+request.getRequestURI().toString();
 
 	}
+	 
 
 	TestConfig prepareForTest(TestConfig config) {
 		running.set(true);
@@ -159,11 +158,11 @@ public class TestResource {
 	}
 
 
-	
-
 	void startCouchbaseTest(final TestConfig config) {
-		final Cluster cluster = CouchbaseCluster.create(config.getServers());
-
+		CouchbaseEnvironment env = DefaultCouchbaseEnvironment.builder().retryDelay(Delay.linear(TimeUnit.MILLISECONDS, config.getRetryDelayMillis())).kvTimeout(300000).networkLatencyMetricsCollectorConfig(DefaultLatencyMetricsCollectorConfig.builder().targetUnit(TimeUnit.MILLISECONDS).build()).networkLatencyMetricsCollectorConfig(DefaultLatencyMetricsCollectorConfig.create(1, TimeUnit.MINUTES)).build();
+        
+		final Cluster cluster = CouchbaseCluster.create(env, config.getServers());
+		
 		final Bucket sharedBucket = cluster.openBucket(config.getBucket(), config.getPassword());
 
 		statusPrinted = new AtomicLong(System.currentTimeMillis());
@@ -206,14 +205,27 @@ public class TestResource {
 								try {
 									failed = false;
 		
-									status = bucket.upsert(JsonDocument.create(uuid, add));
+                                    long startTime = System.currentTimeMillis();
+									status = bucket.upsert(JsonDocument.create(uuid, 1800, add));
+                                     long elapsedTimeSet = System.currentTimeMillis() - startTime;
+                                     
+                                     
+                                     if(elapsedTimeSet > 100) {
+                                        logger.info(" spookreq SET Request took ### "+elapsedTimeSet+" ### ms , UUID: "+uuid);
+                                     }
 									
 
 									if (status == null) {
 										failed = true;
 									log("Failed save! Thread: " + threadId + " Counter: " + counter + " Try: " + tri.get() + " uuid: " + uuid + " status: " + status);
 									} else {
+                                        long startTimeGet = System.currentTimeMillis();
 										JsonDocument get = bucket.get(uuid);
+                                        long elapsedTimeGet = System.currentTimeMillis() - startTimeGet;
+
+                                        if(elapsedTimeGet > 100) {
+                                        logger.info(" spookreq GET Request took ### "+elapsedTimeGet + " ### ms , UUID:" + uuid);
+                                        }
 
 										JsonObject content = get == null ? null : get.content();
 
@@ -378,6 +390,16 @@ public class TestResource {
 		boolean couchbaseUsePersistToOne = false;
 
 		boolean couchbaseUseReplicateToOne = false;
+		
+		long retryDelayMillis = 0L;
+		
+		public void setRetryDelayMillis(long delay) {
+			this.retryDelayMillis = delay;
+		}
+		
+		public long getRetryDelayMillis() {
+			return retryDelayMillis;
+		}
 
 
 
