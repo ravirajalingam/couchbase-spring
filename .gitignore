@@ -1,0 +1,16 @@
+.idea
+dependency-reduced-pom.xml
+earn-corporate-rocs.iml
+out
+target
+.DS_Store
+*.iml
+logs
+.openshift
+*.ser
+*.class
+.classpath
+.project
+.settings
+.metadata
+/bin/
