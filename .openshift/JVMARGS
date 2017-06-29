@@ -1,2 +1,2 @@
 -Dspring.profiles.active=${EPAAS_ENV}
--Xms2048m -Xmx2048m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps
+-Xms3g -Xmx3g -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps
