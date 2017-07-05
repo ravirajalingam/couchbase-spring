@@ -1,3 +1,4 @@
+
 package test;
 
 import java.io.IOException;
@@ -40,6 +41,10 @@ import com.couchbase.client.java.document.JsonDocument;
 import com.couchbase.client.java.document.json.JsonObject;
 import com.couchbase.client.java.env.CouchbaseEnvironment;
 import com.couchbase.client.java.env.DefaultCouchbaseEnvironment;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoCredential;
 import com.mongodb.ServerAddress;
@@ -181,7 +186,6 @@ public class TestResource {
 			final int threadId = thread;
 
 			Runnable r = new Runnable() {
-				
 				@Override
 				public void run() {
 					System.out.println("in side run");
@@ -295,16 +299,18 @@ public class TestResource {
 		System.out.println("======================================Mongo============================================");
 
     	MongoClient mongoClient = null;
-        MongoCredential mongoCredential = MongoCredential.createScramSha1Credential("sampleuser", "sampleuser", "changeme".toCharArray());
+        MongoCredential mongoCredential = MongoCredential.createScramSha1Credential("sampleuser","sampledb", "changeme".toCharArray());
 
          mongoClient = new MongoClient(new ServerAddress("localhost", 27017), Arrays.asList(mongoCredential));
         
-		 MongoDatabase database = mongoClient.getDatabase("sampledb");
+		 DB database = mongoClient.getDB("sampledb");
 
-		MongoCollection<Document> collection = database.getCollection("testcol");
+		 final DBCollection collection = database.getCollection("testcol");
 		
 		 System.out.println("-before--->"+collection.count());
-		 database.getCollection("testcol").deleteMany(new Document());
+		 //database.getCollection("testcol").deleteMany(new Document());
+		 DBObject query = new BasicDBObject();
+		 database.getCollection("testcol").remove(query);
 		 System.out.println("-sfter--->"+collection.count());
 
 		statusPrinted = new AtomicLong(System.currentTimeMillis());
@@ -340,24 +346,25 @@ public class TestResource {
 							
 							// Document doc = Document.parse(addString);
 							
-							Document doc = new Document("_id",uuid1);
-						
+							//BasicDBObject doc = new BasicDBObject(); 
+							//doc.put("_id", uuid1);
 						 // 	System.out.println("myDoc insert--->"+doc.toJson());
 
 							while (status == null && tri.incrementAndGet() < config.getMaxRetries()) {
 								try {
 									failed = false;
-		
+									BasicDBObject doc = new BasicDBObject(); 
+									doc.put("x", uuid1);
                                     long startTime = System.currentTimeMillis();
 									// status = bucket.upsert(JsonDocument.create(uuid, 1800, add));
-                                    collection.insertOne(doc);
+                                    collection.insert(doc);
                                      long elapsedTimeSet = System.currentTimeMillis() - startTime;
                                      
-                                     logger.info(" mongo spookreq SET Request took ### "+elapsedTimeSet+" ### ms , UUID: "+uuid1);
+                                     logger.info(" mongo WHATTTTTTT SET Request took ### "+elapsedTimeSet+" ### ms , UUID: "+uuid1);
                                 
-                                     if(elapsedTimeSet > 1) {
-                                       // logger.info(" mongo spookreq SET Request took ### "+elapsedTimeSet+" ### ms , UUID: "+uuid);
-                                     }
+                                    // if(elapsedTimeSet > 1) {
+                                    //   logger.info(" mongo spookreq SET Request took ### "+elapsedTimeSet+" ### ms , UUID: "+uuid);
+                                    // }
 									
 /*
 									if (status == null) {
