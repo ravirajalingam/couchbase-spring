@@ -360,7 +360,7 @@ public class TestResource {
                                     collection.insert(doc);
                                      long elapsedTimeSet = System.currentTimeMillis() - startTime;
                                      
-                                     logger.info(" mongo WHATTTTTTT SET Request took ### "+elapsedTimeSet+" ### ms , UUID: "+uuid1);
+                                     logger.info(" mongo spookreq SET Request took ### "+elapsedTimeSet+" ### ms , UUID: "+uuid1);
                                 
                                     // if(elapsedTimeSet > 1) {
                                     //   logger.info(" mongo spookreq SET Request took ### "+elapsedTimeSet+" ### ms , UUID: "+uuid);
