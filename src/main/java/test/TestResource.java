@@ -3,7 +3,6 @@ package test;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.Objects;
@@ -21,7 +20,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.log4j.Logger;
-import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -41,17 +39,6 @@ import com.couchbase.client.java.document.JsonDocument;
 import com.couchbase.client.java.document.json.JsonObject;
 import com.couchbase.client.java.env.CouchbaseEnvironment;
 import com.couchbase.client.java.env.DefaultCouchbaseEnvironment;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBObject;
-import com.mongodb.MongoClient;
-import com.mongodb.MongoCredential;
-import com.mongodb.ServerAddress;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
-
-import static com.mongodb.client.model.Filters.eq;
 
 @RestController
 @RequestMapping(value ="/v1/consumer")
@@ -66,8 +53,6 @@ public class TestResource {
 
 	ObjectMapper mapper = new ObjectMapper();
 	
-	// final Logger logger  = Logger.getLogger("com.couchbase.client");
-		
 	final Logger logger  = Logger.getLogger("com.couchbase.client");
 	
 	LimitedStringQueue logs = new LimitedStringQueue(1000);
@@ -92,7 +77,6 @@ public class TestResource {
 
 	enum Client {
 		couchbase,
-		mongo
 	};
 
 	 @RequestMapping(value = "/test/path" ,method=RequestMethod.POST , produces="text/html")
@@ -126,9 +110,6 @@ public class TestResource {
 					switch (client) {
 					case couchbase:
 						startCouchbaseTest(iterationConfig);
-						break;
-					case mongo:
-						startMongoTest(iterationConfig);
 						break;
 					  default:
 						throw new UnsupportedOperationException("No idea of how to handle client type " + client);
@@ -226,9 +207,8 @@ public class TestResource {
 									status = bucket.upsert(JsonDocument.create(uuid, 1800, add));
                                      long elapsedTimeSet = System.currentTimeMillis() - startTime;
                                      
-                                     logger.info(" spookreq SET Request took ### "+elapsedTimeSet+" ### ms , UUID: "+uuid +" thredid " + threadId);
                                      if(elapsedTimeSet > 100) {
-                                       //  logger.info(" spookreq SET Request took ### "+elapsedTimeSet+" ### ms , UUID: "+uuid);
+                                         logger.info(" spookreq SET Request took ### "+elapsedTimeSet+" ### ms , UUID: "+uuid);
                                      }
 									
 
@@ -240,10 +220,9 @@ public class TestResource {
 										JsonDocument get = bucket.get(uuid);
                                         long elapsedTimeGet = System.currentTimeMillis() - startTimeGet;
                                         
-                                        logger.info(" spookreq GET Request took ### "+elapsedTimeGet + " ### ms , UUID:" + uuid+" thredid " + threadId);
 
                                         if(elapsedTimeGet > 100) {
-                                      //   logger.info(" spookreq GET Request took ### "+elapsedTimeGet + " ### ms , UUID:" + uuid);
+                                         logger.info(" spookreq GET Request took ### "+elapsedTimeGet + " ### ms , UUID:" + uuid);
                                         }
 
 										JsonObject content = get == null ? null : get.content();
@@ -294,141 +273,6 @@ public class TestResource {
 		}
 	}
 	
-	void startMongoTest(final TestConfig config) {
-		
-		System.out.println("======================================Mongo============================================");
-
-    	MongoClient mongoClient = null;
-        MongoCredential mongoCredential = MongoCredential.createScramSha1Credential("sampleuser","sampledb", "changeme".toCharArray());
-
-         mongoClient = new MongoClient(new ServerAddress("localhost", 27017), Arrays.asList(mongoCredential));
-        
-		 DB database = mongoClient.getDB("sampledb");
-
-		 final DBCollection collection = database.getCollection("testcol");
-		
-		 System.out.println("-before--->"+collection.count());
-		 //database.getCollection("testcol").deleteMany(new Document());
-		 DBObject query = new BasicDBObject();
-		 database.getCollection("testcol").remove(query);
-		 System.out.println("-sfter--->"+collection.count());
-
-		statusPrinted = new AtomicLong(System.currentTimeMillis());
-
-		for (int thread = 1; thread <= config.getConcurrent(); thread++) {
-			final int threadId = thread;
-
-			Runnable r = new Runnable() {
-				@Override
-				public void run() {
-					Thread.currentThread().setName("thread-" + threadId);
-
-
-					long counter = count.incrementAndGet();
-					while (!pool.isShutdown() && counter <= config.getTotal()) {
-						boolean failed = false;
-
-						try {
-							/* Begin couchbase client method */
-							AtomicInteger tri = new AtomicInteger(0);
-
-							JsonDocument status = null;
-							String uuid1 = UUID.randomUUID().toString();
-
-/*							String addString = "{\"_id\":" + uuid + "\",\"recordTypeCode\":\"D\",\"transactionRefNumber\":\"" + "320133500" + counter + "\",\"transactionDate\":\"11/08/2013\",\"transactionAmount\":" + random.nextInt(999) + "." + random.nextInt(99)
-									+ ",\"authorizationCode\":\"\",\"postDate\":\"12/16/2013\",\"transactionCode\":\"0181\",\"referenceSeNumber\":\"1092817261\",\"transPlasticNumber\":\"XX8349261405000\",\"refBatchNumber\":\"\",\"subCode\":\"\",\"billDescLine1Text\":\"\",\"billDescLine2Text\":\"\",\"billDescLine3Text\":\"\",\"refBillCCYCode\":\"\",\"seNumber\":\"\",\"rocInvoiceNumber\":\"\",\"seName\":\"\",\"productNumberCode\":\"ZC\",\"captureCenterRefNumber\":\"\",\"airLineTicketNumber\":\"\",\"airLineDeparDateDesc\":\"\",\"airLineDocTypeCode\":\"\",\"airportFromName\":\"\",\"accIdContextId\":\"TRIUMP\",\"billPostalCode\":\"850248688\",\"billRegionCode\":\"AZ\",\"billCountryCode\":\"US\",\"accLevelTypeCode\":\"B\",\"accStatusCode\":\"\",\"accAgeCode\":\"0\",\"productId\":\"YY\",\"accEffectiveDate\":\"10/04/1996\",\"prevProdIdentifierText\":\"YY\",\"billCycleCode\":\"B12\",\"transIa\":\"YY\",\"transConfigCode\":\"ZC\",\"rocFileId\":\""
-									+ "000000000" + random.nextInt(2) + "\"}";*/
-
-						// 	JsonObject add = JsonObject.fromJson(addString);
-							
-					// 		System.out.println("addString--->"+addString);
-
-							
-							// Document doc = Document.parse(addString);
-							
-							//BasicDBObject doc = new BasicDBObject(); 
-							//doc.put("_id", uuid1);
-						 // 	System.out.println("myDoc insert--->"+doc.toJson());
-
-							while (status == null && tri.incrementAndGet() < config.getMaxRetries()) {
-								try {
-									failed = false;
-									BasicDBObject doc = new BasicDBObject(); 
-									doc.put("x", uuid1);
-                                    long startTime = System.currentTimeMillis();
-									// status = bucket.upsert(JsonDocument.create(uuid, 1800, add));
-                                    collection.insert(doc);
-                                     long elapsedTimeSet = System.currentTimeMillis() - startTime;
-                                     
-                                     logger.info(" mongo spookreq SET Request took ### "+elapsedTimeSet+" ### ms , UUID: "+uuid1);
-                                
-                                    // if(elapsedTimeSet > 1) {
-                                    //   logger.info(" mongo spookreq SET Request took ### "+elapsedTimeSet+" ### ms , UUID: "+uuid);
-                                    // }
-									
-/*
-									if (status == null) {
-										failed = true;
-									log("Failed save! Thread: " + threadId + " Counter: " + counter + " Try: " + tri.get() + " uuid: " + uuid1 + " status: " + status);
-									} else {
-                                        long startTimeGet = System.currentTimeMillis();
-										// JsonDocument get = bucket.get(uuid);
-                                    //    Document myDoc1 =  collection.find(eq("_id", uuid)).first();
-                                 //        System.out.println("myDoc1--->"+myDoc1.toJson());
-                                        long elapsedTimeGet = System.currentTimeMillis() - startTimeGet;
-
-                                        if(elapsedTimeGet > 1) {
-                                        logger.info(" mongo spookreq GET Request took ### "+elapsedTimeGet + " ### ms , UUID:" + uuid1);
-                                        }
-
-										JsonObject content = get == null ? null : get.content();
-
-										if (!Objects.equals(add, content)) {
-											failed = true;
-									log("Mismatched data! Thread: " + threadId + " Counter: " + counter + " Try: " + tri.get() + " uuid: " + uuid + " Add Value: " + add + " != Get Value: " + content);
-										}
-									}*/
-								} catch (Throwable e) {
-									
-									String stackTrace = "";
-/*									try (StringWriter sw = new StringWriter()) {
-										e.printStackTrace(new PrintWriter(sw));
-										stackTrace = sw.toString();
-									} catch (IOException e2) {
-										// bleh
-									}*/
-
-									failed = true;
-									log("Exception! Thread: " + threadId + " Counter: " + counter + " Try: " + tri.get() + " uuid: " + uuid1 + " Message: " + e.getClass().getName() + " " + e.getMessage() + "\n" + stackTrace);
-									try {
-										Thread.sleep(config.getRetryWaitMs());
-									} catch (InterruptedException e1) {
-										// ignore
-									}
-								}
-							}
-							/* End couchbase client method */
-						} finally {
-							counter = count.incrementAndGet();
-							if ((counter - 1) % config.getStatusEvery() == 0) {
-								long now = System.currentTimeMillis();
-								long elapsed = now - statusPrinted.getAndSet(now);
-								log("Processed " + (counter - 1) + " total in " + elapsed + "ms for chunk of " + config.getStatusEvery() + ". Thread: " + threadId);
-							}
-							if (failed) {
-								int maxFails = config.getMaxFails();
-								if (fails.incrementAndGet() > maxFails) {
-									log("Max Fails Exceeded " + fails + " > " + maxFails + ": Thread: " + threadId + " Counter: " + counter);
-									pool.shutdown();
-								}
-							}
-						}
-					}
-				}
-			};
-			pool.submit(r);
-		}
-	}
 
 	 @RequestMapping(value = "/test/path" , method=RequestMethod.GET ,produces ="text/html")
 	public String testGet() throws JsonProcessingException {
