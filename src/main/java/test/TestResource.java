@@ -2,6 +2,8 @@
 package test;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.LinkedList;
@@ -169,7 +171,7 @@ public class TestResource {
 			Runnable r = new Runnable() {
 				@Override
 				public void run() {
-					System.out.println("in side run");
+				
 					Thread.currentThread().setName("thread-" + threadId);
 
 					Bucket bucket;
@@ -204,7 +206,9 @@ public class TestResource {
 							
 		
                                     long startTime = System.currentTimeMillis();
+                                    logger.info("before upsert----->");
 									status = bucket.upsert(JsonDocument.create(uuid, 1800, add));
+									logger.info("after upsert----->");
                                      long elapsedTimeSet = System.currentTimeMillis() - startTime;
                                      
                                      if(elapsedTimeSet > 100) {
@@ -217,14 +221,16 @@ public class TestResource {
 									log("Failed save! Thread: " + threadId + " Counter: " + counter + " Try: " + tri.get() + " uuid: " + uuid + " status: " + status);
 									} else {
                                         long startTimeGet = System.currentTimeMillis();
-										JsonDocument get = bucket.get(uuid);
+                                        logger.info("before get----->");
+                                     	JsonDocument get = bucket.get(uuid);
+                                     	 logger.info("after get----->");
                                         long elapsedTimeGet = System.currentTimeMillis() - startTimeGet;
                                         
 
                                         if(elapsedTimeGet > 100) {
                                          logger.info(" spookreq GET Request took ### "+elapsedTimeGet + " ### ms , UUID:" + uuid);
                                         }
-
+                                        
 										JsonObject content = get == null ? null : get.content();
 
 										if (!Objects.equals(add, content)) {
@@ -234,16 +240,17 @@ public class TestResource {
 									}
 								} catch (Throwable e) {
 									String stackTrace = "";
-/*									try (StringWriter sw = new StringWriter()) {
+									try (StringWriter sw = new StringWriter()) {
 										e.printStackTrace(new PrintWriter(sw));
 										stackTrace = sw.toString();
 									} catch (IOException e2) {
 										// bleh
-									}*/
+									}
 
 									failed = true;
 									log("Exception! Thread: " + threadId + " Counter: " + counter + " Try: " + tri.get() + " uuid: " + uuid + " Message: " + e.getClass().getName() + " " + e.getMessage() + "\n" + stackTrace);
 									try {
+										log("sleep for retry config ------->");
 										Thread.sleep(config.getRetryWaitMs());
 									} catch (InterruptedException e1) {
 										// ignore
