@@ -240,12 +240,12 @@ public class TestResource {
 									}
 								} catch (Throwable e) {
 									String stackTrace = "";
-									try (StringWriter sw = new StringWriter()) {
+/*									try (StringWriter sw = new StringWriter()) {
 										e.printStackTrace(new PrintWriter(sw));
 										stackTrace = sw.toString();
 									} catch (IOException e2) {
 										// bleh
-									}
+									}*/
 
 									failed = true;
 									log("Exception! Thread: " + threadId + " Counter: " + counter + " Try: " + tri.get() + " uuid: " + uuid + " Message: " + e.getClass().getName() + " " + e.getMessage() + "\n" + stackTrace);
