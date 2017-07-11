@@ -46,11 +46,19 @@ import com.couchbase.client.java.env.DefaultCouchbaseEnvironment;
 @RequestMapping(value ="/v1/consumer")
 public class TestResource {
 	
+	 private final Bucket bucket;
+	
 	@Autowired
 	HttpServletRequest request;	
 	
 	@Autowired
 	HttpServletResponse response;
+	
+    @Autowired
+    public TestResource(Bucket bucket) {
+        this.bucket = bucket;
+    }
+
 	
 
 	ObjectMapper mapper = new ObjectMapper();
@@ -157,11 +165,11 @@ public class TestResource {
 
 
 	void startCouchbaseTest(final TestConfig config) {
-		CouchbaseEnvironment env = DefaultCouchbaseEnvironment.builder().retryDelay(Delay.linear(TimeUnit.MILLISECONDS, config.getRetryDelayMillis())).kvTimeout(300000).networkLatencyMetricsCollectorConfig(DefaultLatencyMetricsCollectorConfig.builder().targetUnit(TimeUnit.MILLISECONDS).build()).networkLatencyMetricsCollectorConfig(DefaultLatencyMetricsCollectorConfig.create(1, TimeUnit.MINUTES)).build();
+		//CouchbaseEnvironment env = DefaultCouchbaseEnvironment.builder().retryDelay(Delay.linear(TimeUnit.MILLISECONDS, config.getRetryDelayMillis())).kvTimeout(300000).networkLatencyMetricsCollectorConfig(DefaultLatencyMetricsCollectorConfig.builder().targetUnit(TimeUnit.MILLISECONDS).build()).networkLatencyMetricsCollectorConfig(DefaultLatencyMetricsCollectorConfig.create(1, TimeUnit.MINUTES)).build();
         
-		final Cluster cluster = CouchbaseCluster.create(env, config.getServers());
+		//final Cluster cluster = CouchbaseCluster.create(env, config.getServers());
 		
-		final Bucket sharedBucket = cluster.openBucket(config.getBucket(), config.getPassword());
+		//final Bucket sharedBucket = cluster.openBucket(config.getBucket(), config.getPassword());
 
 		statusPrinted = new AtomicLong(System.currentTimeMillis());
 
@@ -174,14 +182,14 @@ public class TestResource {
 				
 					Thread.currentThread().setName("thread-" + threadId);
 
-					Bucket bucket;
+					// Bucket bucket;
 
-					if (config.isCouchbaseSharedThreadBucket()) {
+/*					if (config.isCouchbaseSharedThreadBucket()) {
 						bucket = sharedBucket;
 					} else {
 						sharedBucket.close();
 						bucket = cluster.openBucket(config.getBucket(), config.getPassword());
-					}
+					}*/
 
 					long counter = count.incrementAndGet();
 					while (!pool.isShutdown() && counter <= config.getTotal()) {
@@ -203,17 +211,14 @@ public class TestResource {
 							while (status == null && tri.incrementAndGet() < config.getMaxRetries()) {
 								try {
 									failed = false;
-							
 		
                                     long startTime = System.currentTimeMillis();
-                                    logger.info("before upsert----->");
 									status = bucket.upsert(JsonDocument.create(uuid, 1800, add));
-									logger.info("after upsert----->");
                                      long elapsedTimeSet = System.currentTimeMillis() - startTime;
                                      
-                                     if(elapsedTimeSet > 100) {
+                                   //  if(elapsedTimeSet > 100) {
                                          logger.info(" spookreq SET Request took ### "+elapsedTimeSet+" ### ms , UUID: "+uuid);
-                                     }
+                                   //  }
 									
 
 									if (status == null) {
@@ -221,15 +226,13 @@ public class TestResource {
 									log("Failed save! Thread: " + threadId + " Counter: " + counter + " Try: " + tri.get() + " uuid: " + uuid + " status: " + status);
 									} else {
                                         long startTimeGet = System.currentTimeMillis();
-                                        logger.info("before get----->");
                                      	JsonDocument get = bucket.get(uuid);
-                                     	 logger.info("after get----->");
                                         long elapsedTimeGet = System.currentTimeMillis() - startTimeGet;
                                         
 
-                                        if(elapsedTimeGet > 100) {
+                                       // if(elapsedTimeGet > 100) {
                                          logger.info(" spookreq GET Request took ### "+elapsedTimeGet + " ### ms , UUID:" + uuid);
-                                        }
+                                       // }
                                         
 										JsonObject content = get == null ? null : get.content();
 
