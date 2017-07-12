@@ -1,1 +1,1 @@
--Dspring.profiles.active=${EPAAS_ENV} -Xms3072m -Xmx3072m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps 
+-Dspring.profiles.active=${EPAAS_ENV} -Xms3072m -Xmx3072m -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps
