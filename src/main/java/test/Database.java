@@ -21,9 +21,16 @@
  */
 package test;
 
+import com.couchbase.client.core.metrics.DefaultLatencyMetricsCollectorConfig;
+import com.couchbase.client.core.time.Delay;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.CouchbaseCluster;
+import com.couchbase.client.java.env.CouchbaseEnvironment;
+import com.couchbase.client.java.env.DefaultCouchbaseEnvironment;
+
+import java.util.concurrent.TimeUnit;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,9 +46,13 @@ public class Database {
 
     @Value("${password}")
     private String password;
+    
 
     public @Bean Cluster cluster() {
-        return CouchbaseCluster.create(hostname);
+    	CouchbaseEnvironment env = DefaultCouchbaseEnvironment.builder().retryDelay(Delay.linear(TimeUnit.MILLISECONDS, 0)).kvTimeout(300000).
+    			networkLatencyMetricsCollectorConfig(DefaultLatencyMetricsCollectorConfig.builder().targetUnit(TimeUnit.MILLISECONDS).build()).
+    			networkLatencyMetricsCollectorConfig(DefaultLatencyMetricsCollectorConfig.create(1, TimeUnit.MINUTES)).build();
+        return CouchbaseCluster.create(env , hostname);
     }
 
     public @Bean Bucket bucket() {
